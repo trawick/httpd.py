@@ -4,7 +4,8 @@ app = Flask(__name__)
 app.use_x_sendfile = True
 
 
-PATH_VARS = ('PATH_INFO', 'PATH_TRANSLATED', 'SCRIPT_FILENAME', 'REQUEST_URI', 'SCRIPT_URI')
+PATH_VARS = ('PATH_INFO', 'PATH_TRANSLATED', 'SCRIPT_FILENAME', 
+             'REQUEST_URI', 'SCRIPT_URI')
 
 
 @app.route('/app/cgivars/')

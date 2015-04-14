@@ -1,6 +1,7 @@
 from django.http import HttpResponse
 
-PATH_VARS = ('PATH_INFO', 'PATH_TRANSLATED', 'SCRIPT_FILENAME', 'REQUEST_URI', 'SCRIPT_URI')
+PATH_VARS = ('PATH_INFO', 'PATH_TRANSLATED', 'SCRIPT_FILENAME',
+             'REQUEST_URI', 'SCRIPT_URI')
 
 
 def cgivars(request):
