@@ -3,7 +3,6 @@
 
 import uwsgi
 
-
 index_html_template = """
 <html>
   <head>
