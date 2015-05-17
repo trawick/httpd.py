@@ -55,7 +55,7 @@ def application(env, sr):
         uwsgi.websocket_handshake(env['HTTP_SEC_WEBSOCKET_KEY'], env.get('HTTP_ORIGIN', ''))
         while True:
             msg = uwsgi.websocket_recv()
-            uwsgi.websocket_send("%s" % msg)
+            uwsgi.websocket_send(msg)
     else:
         sr('404 NOT FOUND', [('Content-Type', 'text/plain')])
         return 'Not found'
