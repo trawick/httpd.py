@@ -1,0 +1,106 @@
+#!/bin/sh
+
+SERVICE_NAME={{ project_name }}-app
+PIDFILE={{ log_dir }}/{{ project_name }}.pid
+UWSGI_INI={{ uwsgi_cfg_dir }}/{{ project_name }}.ini
+UWSGI_ENV={{ virtualenv_dir }}
+
+. ${UWSGI_ENV}/bin/activate
+
+is_running() {
+    if ! test -f "$PIDFILE"; then
+        return 1
+    fi
+
+    PID=`cat $PIDFILE 2>/dev/null`
+    if test -z "$PID"; then
+        return 1
+    fi
+
+    if ps $PID >/dev/null 2>&1; then
+        return 0
+    fi
+
+    return 1
+}
+
+start_service() {
+    if is_running; then
+        echo " * $SERVICE_NAME is already running"
+        exit 1
+    fi
+
+    echo -n " * Starting $SERVICE_NAME..."
+    uwsgi $UWSGI_INI
+    for sleep_before_check in 1 1 1 2 2 2; do
+        sleep $sleep_before_check
+        echo -n "."
+        if is_running; then
+            break
+        fi
+    done
+    echo ""
+
+    if ! is_running; then
+        echo " * $SERVICE_NAME did not start (yet)"
+        exit 1
+    fi
+}
+
+stop_service() {
+    if ! is_running; then
+        echo " * $SERVICE_NAME is not running"
+        exit 1
+    fi
+
+    echo -n " * Stopping $SERVICE_NAME..."
+    uwsgi --stop $PIDFILE
+    for sleep_before_retry in 1 1 1 2 2 2 3 4 5 6 10; do
+        if ! is_running; then
+            break
+        fi
+        sleep $sleep_before_retry
+        echo -n "."
+    done
+    echo ""
+
+    if is_running; then
+        echo " * $SERVICE_NAME did not stop (yet)"
+        exit 1
+    else
+        rm $PIDFILE
+    fi
+}
+
+status_service() {
+    if is_running; then
+        echo " * $SERVICE_NAME is running"
+    else
+        echo " * $SERVICE_NAME is not running"
+        exit 1
+    fi
+}
+
+case "$1" in
+  status)
+    status_service
+    ;;
+  start)
+    start_service
+    ;;
+  stop)
+    stop_service
+    ;;
+  restart)
+    if is_running; then
+      stop_service
+    fi
+    start_service
+    ;;
+  *)
+    echo "Usage: service $SERVICE_NAME {start|stop|restart|status}" >&2
+    exit 1   
+    ;;
+esac
+
+exit 0

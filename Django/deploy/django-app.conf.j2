@@ -1,0 +1,33 @@
+{% if http_port != 80 %}
+Listen {{ http_port }}
+{% endif %}
+
+<VirtualHost *:{{ http_port }}>
+    ServerName simple-django.com
+    # Lots of stuff inherited from global scope
+
+    DocumentRoot {{ remote_checkout }}/Django/docroot
+    <Directory {{ remote_checkout }}/Django/docroot/>
+      Require all granted
+    </Directory>
+
+    CustomLog {{ log_dir }}/django-app-access.log common
+    ErrorLog {{ log_dir }}/django-app-error.log
+    LogLevel warn
+
+    SetEnvIf Request_URI . proxy-scgi-pathinfo
+    ProxySCGISendfile On
+    <IfVersion >= 2.4.13>
+    ProxySCGIInternalRedirect X-Location
+    </IfVersion>
+
+    ProxyPass /static/protected/ !
+    ProxyPass /app/ scgi://127.0.0.1:{{ application_port }}/
+
+    # Only allow access to /static/protected/ if a request to /app/protected/
+    # redirected there.  (I.e., must have been redirected, must have hit
+    # the app first)
+    <Location /static/protected/>
+        Require expr %{reqenv:REDIRECT_REQUEST_URI} =~ m#^/app/protected/#
+    </Location>
+</VirtualHost>

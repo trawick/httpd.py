@@ -1,0 +1,189 @@
+---
+
+- name: Create remote user
+  hosts: webservers
+  vars:
+    remote_user: django-user
+  remote_user: vagrant
+  sudo: true
+  tasks:
+    - name: Create remote user
+      user: name={{ remote_user }} comment="Django app user" createhome=yes state=present
+    - name: Add authorized key for {{ remote_user }}
+      authorized_key: user={{ remote_user }}
+                      key="{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+                      state=present
+    - name: Add {{ remote_user }} to sudoers
+      lineinfile: >
+          dest=/etc/sudoers
+          regexp='^{{ remote_user }}'
+          line='{{ remote_user }} ALL=(ALL) NOPASSWD: ALL'
+          state=present
+
+- name: Configure and deploy the application code
+  hosts: webservers
+  vars:
+    application_port: 3006
+    django_src: /home/django-user/httpd.py/Django/app
+    http_port: 80
+    pg_user: simple-django
+    project_db: simple-django
+    project_name: simple-django
+    remote_checkout: /home/django-user/httpd.py
+    remote_user: django-user
+    static_dir: /home/django-user/static
+    uwsgi_cfg_dir: /etc/uwsgi-configpg_user=django-user
+    virtualenv_dir: /home/django-user/envs/django
+  remote_user: "{{ remote_user }}"
+  tasks:
+    - name: Update apt cache
+      apt: update_cache=yes
+      sudo: yes
+    - name: Make sure python-software-properties is installed
+      apt: pkg=python-software-properties state=latest
+      sudo: yes
+    - name: Add ppa repo for httpd 2.4.latest
+      apt_repository: repo='ppa:ondrej/apache2/ubuntu'
+      sudo: yes
+    - name: Update apt cache
+      apt: update_cache=yes
+      sudo: yes
+    - name: Install packages
+      apt: name={{ item }} state=latest
+      sudo: yes
+      with_items:
+        - git
+        - python-virtualenv
+        - postgresql
+        - libpq-dev
+        - python-dev
+# The system python-psycopg2 package is used by Ansible; the Django app uses psycopg2 from its virtualenv.
+        - python-psycopg2
+
+    - name: Install system httpd
+      apt: name={{ item }} state=latest
+      sudo: yes
+      with_items:
+        - apache2
+      notify: restart system httpd
+
+    - name: Make sure httpd is started and will run at boot
+      service: name=apache2 state=started enabled=yes
+
+    - name: Setup Postgresql user
+      sudo: yes
+      sudo_user: postgres
+      postgresql_user: name={{ pg_user }} password={{ pg_password }} role_attr_flags=CREATEDB,NOSUPERUSER
+      notify: restart application
+
+    - name: Setup Postgresql DB
+      sudo: yes
+      sudo_user: postgres
+      postgresql_db: name={{ project_db }}
+                     encoding='UTF-8'
+                     lc_collate='en_US.UTF-8'
+                     lc_ctype='en_US.UTF-8'
+                     template='template0'
+      notify: restart application
+
+    - git: repo=https://github.com/trawick/httpd.py.git
+           dest={{ remote_checkout }}
+           accept_hostkey=true
+           version=HEAD
+           update=yes
+           force=no
+      notify: restart application
+
+    - file: >
+           dest=/home/{{ remote_user }}/envs
+           mode=755
+           owner={{ remote_user }}
+           group={{ remote_user }}
+           state=directory
+      notify: restart application
+
+    - name: Create new virtualenv
+      command: "/usr/bin/virtualenv -p /usr/bin/python {{ virtualenv_dir }} creates={{ virtualenv_dir }}"
+
+    - file: >
+           dest={{ static_dir }}
+           mode=755
+           owner={{ remote_user }}
+           group={{ remote_user }}
+           state=directory
+
+    - pip: virtualenv={{ virtualenv_dir }}
+           requirements={{ remote_checkout }}/requirements.txt
+      notify: restart application
+
+    - django_manage: >
+          app_path={{ django_src }}
+          command=migrate
+          virtualenv={{ virtualenv_dir }}
+
+#   no static files in sample ('staticfiles' app)
+#   - django_manage: >
+#         app_path={{ django_src }}
+#         command=collectstatic
+#         virtualenv={{ virtualenv_dir }}
+
+    - name: Configure system httpd to include various modules
+      apache2_module: state=present name={{ item }}
+      sudo: yes
+      with_items:
+        - proxy
+        - proxy_scgi
+        - headers
+        - deflate
+        - expires
+      notify: restart system httpd
+
+    - name: Remove default virtualhost file.
+      file:
+        path: "/etc/apache2/sites-enabled/000-default.conf"
+        state: absent
+      sudo: yes
+      notify: restart system httpd
+
+    - name: Configure system httpd
+      template: src=django-app.conf.j2 dest=/etc/apache2/sites-enabled/{{ project_name }}-vhost.conf
+      sudo: yes
+      notify: restart system httpd
+
+    - name: Create uWSGI config directory
+      file: >
+          dest={{ uwsgi_cfg_dir }}
+          mode=755
+          owner=root
+          group=root
+          state=directory
+      sudo: yes
+      notify: restart application
+
+    - name: Add application uWSGI config
+      template: src=uwsgi-ini.j2 dest={{ uwsgi_cfg_dir }}/{{ project_name }}.ini
+      sudo: yes
+      notify: restart application
+
+    - name: Add application init script
+      template: src=init-script.j2 dest=/etc/init.d/{{ project_name }}-app mode=0751
+      sudo: yes
+      notify: restart application
+
+    - name: Configure run-levels for application
+      command: update-rc.d {{ project_name }}-app defaults
+      sudo: yes
+
+    - name: Run application
+      action: service name={{ project_name }}-app state=started
+      sudo: yes
+
+  handlers:
+
+    - name: restart application
+      service: name={{ project_name }}-app state=restarted
+      sudo: yes
+
+    - name: restart system httpd
+      service: name=apache2 state=restarted
+      sudo: yes
