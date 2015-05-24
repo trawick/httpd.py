@@ -146,7 +146,7 @@
       notify: restart system httpd
 
     - name: Configure system httpd
-      template: src=django-app.conf.j2 dest=/etc/apache2/sites-enabled/{{ project_name }}-vhost.conf
+      template: src=templates/django-app.conf.j2 dest=/etc/apache2/sites-enabled/{{ project_name }}-vhost.conf
       sudo: yes
       notify: restart system httpd
 
@@ -161,12 +161,12 @@
       notify: restart application
 
     - name: Add application uWSGI config
-      template: src=uwsgi-ini.j2 dest={{ uwsgi_cfg_dir }}/{{ project_name }}.ini
+      template: src=templates/uwsgi-ini.j2 dest={{ uwsgi_cfg_dir }}/{{ project_name }}.ini
       sudo: yes
       notify: restart application
 
     - name: Add application init script
-      template: src=init-script.j2 dest=/etc/init.d/{{ project_name }}-app mode=0751
+      template: src=templates/init-script.j2 dest=/etc/init.d/{{ project_name }}-app mode=0751
       sudo: yes
       notify: restart application
 
