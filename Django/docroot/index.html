@@ -9,8 +9,9 @@
     <ul>
         <li><a href="/app/cgivars/">CGI vars</a></li>
         <li><a href="/app/protected/">protected web server resource</a>
-            <br />This <strong>fails</strong> with an empty page if using
-            unpatched httpd older than 2.4.13.
+            <br /><strong>This displays an empty page</strong> if using
+            unpatched httpd older than 2.4.13 because the application
+            response isn't recognized as a redirect.
         </li>
         <li><a href="/app/sendfile/">web server resource</a></li>
     </ul>
