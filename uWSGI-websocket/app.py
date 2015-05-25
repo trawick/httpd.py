@@ -44,10 +44,10 @@ index_html_template = """
 
 
 def application(env, sr):
-    ws_scheme = 'ws'
-    if 'HTTPS' in env or env['wsgi.url_scheme'] == 'https':
-        ws_scheme = 'wss'
     if env['PATH_INFO'] == '/':
+        ws_scheme = 'ws'
+        if 'HTTPS' in env or env['wsgi.url_scheme'] == 'https':
+            ws_scheme = 'wss'
         sr('200 OK', [('Content-Type', 'text/html')])
         host = env.get('HTTP_X_FORWARDED_HOST', env['HTTP_HOST'])
         return index_html_template % (ws_scheme, host)

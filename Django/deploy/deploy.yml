@@ -73,7 +73,9 @@
     - name: Setup Postgresql user
       sudo: yes
       sudo_user: postgres
-      postgresql_user: name={{ pg_user }} password={{ pg_password }} role_attr_flags=CREATEDB,NOSUPERUSER
+      postgresql_user: name={{ pg_user }}
+                       password={{ pg_password }}
+                       role_attr_flags=CREATEDB,NOSUPERUSER
       notify: restart application
 
     - name: Setup Postgresql DB
