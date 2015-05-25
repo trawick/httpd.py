@@ -4,7 +4,7 @@
   hosts: webservers
   vars:
     remote_user: django-user
-  remote_user: vagrant
+  remote_user: "{{ initial_user }}"
   sudo: true
   tasks:
     - name: Create remote user
@@ -86,7 +86,8 @@
                      template='template0'
       notify: restart application
 
-    - git: repo=https://github.com/trawick/httpd.py.git
+    - name: Update application code from Github
+      git: repo=https://github.com/trawick/httpd.py.git
            dest={{ remote_checkout }}
            accept_hostkey=true
            version=HEAD
@@ -94,7 +95,8 @@
            force=no
       notify: restart application
 
-    - file: >
+    - name: Create directory to contain virtualenv
+      file: >
            dest=/home/{{ remote_user }}/envs
            mode=755
            owner={{ remote_user }}
@@ -103,26 +105,32 @@
       notify: restart application
 
     - name: Create new virtualenv
-      command: "/usr/bin/virtualenv -p /usr/bin/python {{ virtualenv_dir }} creates={{ virtualenv_dir }}"
+      command: /usr/bin/virtualenv -p /usr/bin/python {{ virtualenv_dir }}
+      args:
+        creates: "{{ virtualenv_dir }}"
 
-    - file: >
+    - name: Create directory for static files
+      file: >
            dest={{ static_dir }}
            mode=755
            owner={{ remote_user }}
            group={{ remote_user }}
            state=directory
 
-    - pip: virtualenv={{ virtualenv_dir }}
+    - name: Install/update requirements
+      pip: virtualenv={{ virtualenv_dir }}
            requirements={{ remote_checkout }}/requirements.txt
       notify: restart application
 
-    - django_manage: >
+    - name: Django migrate db
+      django_manage: >
           app_path={{ django_src }}
           command=migrate
           virtualenv={{ virtualenv_dir }}
 
 #   no static files in sample ('staticfiles' app)
-#   - django_manage: >
+#   - name: Django manage static files
+#     django_manage: >
 #         app_path={{ django_src }}
 #         command=collectstatic
 #         virtualenv={{ virtualenv_dir }}
@@ -146,7 +154,8 @@
       notify: restart system httpd
 
     - name: Configure system httpd
-      template: src=templates/django-app.conf.j2 dest=/etc/apache2/sites-enabled/{{ project_name }}-vhost.conf
+      template: src=templates/django-app.conf.j2
+                dest=/etc/apache2/sites-enabled/{{ project_name }}-vhost.conf
       sudo: yes
       notify: restart system httpd
 
@@ -161,12 +170,15 @@
       notify: restart application
 
     - name: Add application uWSGI config
-      template: src=templates/uwsgi-ini.j2 dest={{ uwsgi_cfg_dir }}/{{ project_name }}.ini
+      template: src=templates/uwsgi-ini.j2
+                dest={{ uwsgi_cfg_dir }}/{{ project_name }}.ini
       sudo: yes
       notify: restart application
 
     - name: Add application init script
-      template: src=templates/init-script.j2 dest=/etc/init.d/{{ project_name }}-app mode=0751
+      template: src=templates/init-script.j2
+                dest=/etc/init.d/{{ project_name }}-app
+                mode=0751
       sudo: yes
       notify: restart application
 
