@@ -33,7 +33,7 @@
     remote_user: django-user
     static_dir: /home/django-user/static
     uwsgi_cfg_dir: /etc/uwsgi-configpg_user=django-user
-    virtualenv_dir: /home/django-user/envs/django
+    virtualenv_dir: /home/django-user/venv
   remote_user: "{{ remote_user }}"
   tasks:
     - name: Update apt cache
@@ -90,15 +90,6 @@
            force=no
            depth=5
            version={{ git_repo_version }}
-      notify: restart application
-
-    - name: Create directory to contain virtualenv
-      file: >
-           dest=/home/{{ remote_user }}/envs
-           mode=755
-           owner={{ remote_user }}
-           group={{ remote_user }}
-           state=directory
       notify: restart application
 
     - name: Create new virtualenv
