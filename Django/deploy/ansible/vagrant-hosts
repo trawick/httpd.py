@@ -6,3 +6,5 @@ initial_user=vagrant
 log_dir=/tmp
 pg_password=simple-django-db-password
 git_repo_version=master
+app_processes=1
+app_threads=2
