@@ -86,9 +86,10 @@
       git: repo=https://github.com/trawick/httpd.py.git
            dest={{ remote_checkout }}
            accept_hostkey=true
-           version=HEAD
            update=yes
            force=no
+           depth=5
+           version={{ git_repo_version }}
       notify: restart application
 
     - name: Create directory to contain virtualenv
