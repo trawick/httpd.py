@@ -15,6 +15,7 @@ def protected(request):
     response = HttpResponse()
     # Django will turn this into Location: http://127.0.0.1:18083/static/protected/foo
     #     response['Location'] = filename
+
     # This is passed through unadulterated:
     response['X-Location'] = filename
     return response

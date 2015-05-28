@@ -21,6 +21,7 @@ def protected():
 
     # Flask/Werkzeug will turn this into Location: http://127.0.0.1:18082/static/protected/foo
     #     rsp.headers['Location'] = '/protected/' + filename
+
     # This is passed through unadulterated:
     rsp.headers['X-Location'] = filename
     return rsp
