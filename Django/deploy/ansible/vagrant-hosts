@@ -5,6 +5,6 @@ vagrant ansible_ssh_host=127.0.0.1 ansible_ssh_port=2222
 initial_user=vagrant
 log_dir=/tmp
 pg_password=simple-django-db-password
-git_repo_version=master
+git_repo_version=AC2016
 app_processes=1
 app_threads=2
